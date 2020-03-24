@@ -1,0 +1,15 @@
+model:
+    arch: hardnet
+    n_classes: 3
+data:
+    dataset: bdd100k
+    train_split: train
+    val_split: val
+    img_rows: 576
+    img_cols: 1024
+    path: /home/jimmyyoung/data/bdd100k/
+    sbd_path: /mnt/ssd2/Cityscapes/
+testing:
+    checkpoint: /home/jimmyyoung/data/bdd100k/
+    resume: '/home/jimmyyoung/FCHarDNet/weights/hardnet_bdd100k_checkpoint.pkl'
+    type: ROS

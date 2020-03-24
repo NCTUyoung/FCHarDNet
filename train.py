@@ -9,6 +9,7 @@ import numpy as np
 import torch.nn as nn
 
 from torch.utils import data
+from torchvision.utils import make_grid
 from tqdm import tqdm
 
 from ptsemseg.models import get_model
@@ -20,13 +21,14 @@ from ptsemseg.augmentations import get_composed_augmentations
 from ptsemseg.schedulers import get_scheduler
 from ptsemseg.optimizers import get_optimizer
 
-from tensorboardX import SummaryWriter
+import wandb
+
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
         nn.init.xavier_normal_(m.weight)
 
-def train(cfg, writer, logger):
+def train(cfg):
 
     # Setup seeds
     torch.manual_seed(cfg.get("seed", 1337))
@@ -102,7 +104,7 @@ def train(cfg, writer, logger):
     start_iter = 0
     if cfg["training"]["resume"] is not None:
         if os.path.isfile(cfg["training"]["resume"]):
-            logger.info(
+            print(
                 "Loading model and optimizer from checkpoint '{}'".format(cfg["training"]["resume"])
             )
             checkpoint = torch.load(cfg["training"]["resume"])
@@ -110,17 +112,17 @@ def train(cfg, writer, logger):
             optimizer.load_state_dict(checkpoint["optimizer_state"])
             scheduler.load_state_dict(checkpoint["scheduler_state"])
             start_iter = checkpoint["epoch"]
-            logger.info(
+            print(
                 "Loaded checkpoint '{}' (iter {})".format(
                     cfg["training"]["resume"], checkpoint["epoch"]
                 )
             )
         else:
-            logger.info("No checkpoint found at '{}'".format(cfg["training"]["resume"]))
+            print("No checkpoint found at '{}'".format(cfg["training"]["resume"]))
 
     if cfg["training"]["finetune"] is not None:
         if os.path.isfile(cfg["training"]["finetune"]):
-            logger.info(
+            print(
                 "Loading model and optimizer from checkpoint '{}'".format(cfg["training"]["finetune"])
             )
             checkpoint = torch.load(cfg["training"]["finetune"])
@@ -145,6 +147,7 @@ def train(cfg, writer, logger):
 
             optimizer.zero_grad()
             outputs = model(images)
+            
 
             loss = loss_fn(input=outputs, target=labels)
             loss.backward()
@@ -154,7 +157,8 @@ def train(cfg, writer, logger):
             time_meter.update(time.time() - start_ts)
             loss_all += loss.item()
             loss_n += 1
-            
+            if (i + 1) % cfg["training"]["print_interval_image"] == 0:
+                wandb.log({"images/original":wandb.Image(make_grid(images.detach().cpu())),"images/gt":wandb.Image(make_grid(outputs[:,:3,:,:].detach().cpu()))})
             if (i + 1) % cfg["training"]["print_interval"] == 0:
                 fmt_str = "Iter [{:d}/{:d}]  Loss: {:.4f}  Time/Image: {:.4f}  lr={:.6f}"
                 print_str = fmt_str.format(
@@ -167,10 +171,14 @@ def train(cfg, writer, logger):
                 
 
                 print(print_str)
-                logger.info(print_str)
-                writer.add_scalar("loss/train_loss", loss.item(), i + 1)
+                
+                print(loss.item())
+                wandb.log({"loss/train_loss": loss.item()}, i + 1)
+                
                 time_meter.reset()
+                
 
+            
             if (i + 1) % cfg["training"]["val_interval"] == 0 or (i + 1) == cfg["training"][
                 "train_iters"
             ]:
@@ -192,18 +200,18 @@ def train(cfg, writer, logger):
                         running_metrics_val.update(gt, pred)
                         val_loss_meter.update(val_loss.item())
 
-                writer.add_scalar("loss/val_loss", val_loss_meter.avg, i + 1)
-                logger.info("Iter %d Val Loss: %.4f" % (i + 1, val_loss_meter.avg))
+                wandb.log({"loss/val_loss": val_loss_meter.avg}, i + 1)
+                
 
                 score, class_iou = running_metrics_val.get_scores()
                 for k, v in score.items():
                     print(k, v)
-                    logger.info("{}: {}".format(k, v))
-                    writer.add_scalar("val_metrics/{}".format(k), v, i + 1)
+                    
+                    wandb.log({"val_metrics/{}".format(k): v}, i + 1)
 
                 for k, v in class_iou.items():
-                    logger.info("{}: {}".format(k, v))
-                    writer.add_scalar("val_metrics/cls_{}".format(k), v, i + 1)
+                    
+                    wandb.log({"val_metrics/cls_{}".format(k): v}, i + 1)
 
                 val_loss_meter.reset()
                 running_metrics_val.reset()
@@ -214,11 +222,11 @@ def train(cfg, writer, logger):
                       "optimizer_state": optimizer.state_dict(),
                       "scheduler_state": scheduler.state_dict(),
                 }
-                save_path = os.path.join(
-                    writer.file_writer.get_logdir(),
+                save_path = os.path.join(wandb.run.dir,
                     "{}_{}_checkpoint.pkl".format(cfg["model"]["arch"], cfg["data"]["dataset"]),
                 )
                 torch.save(state, save_path)
+                wandb.save(save_path)
 
                 if score["Mean IoU : \t"] >= best_iou:
                     best_iou = score["Mean IoU : \t"]
@@ -228,10 +236,11 @@ def train(cfg, writer, logger):
                         "best_iou": best_iou,
                     }
                     save_path = os.path.join(
-                        writer.file_writer.get_logdir(),
+                        wandb.run.dir,
                         "{}_{}_best_model.pkl".format(cfg["model"]["arch"], cfg["data"]["dataset"]),
                     )
                     torch.save(state, save_path)
+                    wandb.save(save_path)
                 torch.cuda.empty_cache()
 
             if (i + 1) == cfg["training"]["train_iters"]:
@@ -250,18 +259,13 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
+    wandb.init(project="driveable",config=args)
     with open(args.config) as fp:
         cfg = yaml.load(fp)
 
     run_id = random.randint(1, 100000)
-    logdir = os.path.join("runs", os.path.basename(args.config)[:-4], "cur")
-    writer = SummaryWriter(log_dir=logdir)
+    
 
-    print("RUNDIR: {}".format(logdir))
-    shutil.copy(args.config, logdir)
+    
 
-    logger = get_logger(logdir)
-    logger.info("Let the games begin")
-
-    train(cfg, writer, logger)
+    train(cfg)
