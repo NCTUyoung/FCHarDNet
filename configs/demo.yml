@@ -1,0 +1,17 @@
+model:
+    arch: hardnet
+data:
+    dataset: bdd100k
+    train_split: train
+    val_split: val
+    img_rows: 576
+    img_cols: 1024
+    path: /home/jimmyyoung/data/bdd100k/
+    sbd_path: /mnt/ssd2/Cityscapes/
+testing:
+    log_dir: /home/ivslab/FCHarDNet/log/
+    resume: '/home/ivslab/FCHarDNet/weights/0323/hardnet_bdd100k_lane_best_model.pkl'
+    type: image
+    n_classes: 6
+
+    

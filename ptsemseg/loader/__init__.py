@@ -8,7 +8,7 @@ from ptsemseg.loader.cityscapes_loader import cityscapesLoader
 from ptsemseg.loader.nyuv2_loader import NYUv2Loader
 from ptsemseg.loader.sunrgbd_loader import SUNRGBDLoader
 from ptsemseg.loader.mapillary_vistas_loader import mapillaryVistasLoader
-
+from ptsemseg.loader.bdd100kLoader import bdd100kLoader
 
 def get_loader(name):
     """get_loader
@@ -24,4 +24,5 @@ def get_loader(name):
         "nyuv2": NYUv2Loader,
         "sunrgbd": SUNRGBDLoader,
         "vistas": mapillaryVistasLoader,
+        'bdd100k':bdd100kLoader
     }[name]
