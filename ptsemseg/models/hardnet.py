@@ -6,7 +6,7 @@ import numpy as np
 
 class ConvLayer(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel=3, stride=1, dropout=0.1):
-        super(ConvLayer,self).__init__()
+        super().__init__()
         self.add_module('conv', nn.Conv2d(in_channels, out_channels, kernel_size=kernel,
                                           stride=stride, padding=kernel//2, bias = False))
         self.add_module('norm', nn.BatchNorm2d(out_channels))
@@ -15,7 +15,7 @@ class ConvLayer(nn.Sequential):
         #print(kernel, 'x', kernel, 'x', in_channels, 'x', out_channels)
 
     def forward(self, x):
-        return super(ConvLayer,self).forward(x)
+        return super().forward(x)
         
 
 
@@ -43,7 +43,7 @@ class HarDBlock(nn.Module):
         return self.out_channels
  
     def __init__(self, in_channels, growth_rate, grmul, n_layers, keepBase=False, residual_out=False):
-        super(HarDBlock,self).__init__()
+        super().__init__()
         self.keepBase = keepBase
         self.links = []
         layers_ = []
@@ -85,7 +85,7 @@ class HarDBlock(nn.Module):
 
 class TransitionUp(nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(TransitionUp,self).__init__()
+        super().__init__()
         #print("upsample",in_channels, out_channels)
 
     def forward(self, x, skip, concat=True):
