@@ -12,7 +12,7 @@ training:
     train_iters: 90000
     batch_size: 16
     val_interval: 15000
-    n_workers: 8
+    n_workers: 4
     print_interval: 20
     print_interval_image: 100
     augmentations:
@@ -30,11 +30,11 @@ training:
         momentum: 0.9
     loss:
         name: 'bootstrapped_cross_entropy'
-        min_K: 2048
-        loss_th: 0.2
+        min_K: 4096
+        loss_th: 0.3
         size_average: True
     lr_schedule: 
         name: 'poly_lr'
         max_iter: 90000
-    resume: None
-    finetune: /home/jimmyyoung/FCHarDNet/weights/0323/hardnet_bdd100k_lane_best_model.pkl    
+    resume: '/home/jimmyyoung/FCHarDNet/weights/hardnet_bdd100k_checkpoint.pkl'
+    finetune: None    
