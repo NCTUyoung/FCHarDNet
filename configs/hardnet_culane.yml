@@ -1,0 +1,39 @@
+model:
+    arch: culane
+data:
+    dataset: culane
+    train_split: train
+    val_split: val
+    img_rows: 576
+    img_cols: 1024
+    path: /home/jimmyyoung/data/Culane
+    sbd_path: /mnt/ssd2/Cityscapes/
+training:
+    train_iters: 90000
+    batch_size: 16
+    val_interval: 15000
+    n_workers: 8
+    print_interval: 20
+    print_interval_image: 200
+    augmentations:
+        translate: [20, 20]
+        rotate: 5
+        gamma: 0.1
+        hue: 0.05
+        saturation: 0.05
+        brightness: 0.05
+    optimizer:
+        name: 'sgd'
+        lr: 0.015
+        weight_decay: 0.0005
+        momentum: 0.9
+    loss:
+        name: 'bootstrapped_cross_entropy'
+        min_K: 4096
+        loss_th: 0.3
+        size_average: True
+    lr_schedule: 
+        name: 'poly_lr'
+        max_iter: 90000
+    resume: None
+    finetune: None

@@ -127,6 +127,8 @@ def train(cfg):
             )
             checkpoint = torch.load(cfg["training"]["finetune"])
             model.load_state_dict(checkpoint["model_state"])
+        else:
+            print("No Resume checkpoint found at '{}'".format(cfg["training"]["resume"]))
 
     val_loss_meter = averageMeter()
     time_meter = averageMeter()

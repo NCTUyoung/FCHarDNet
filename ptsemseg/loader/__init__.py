@@ -10,6 +10,7 @@ from ptsemseg.loader.sunrgbd_loader import SUNRGBDLoader
 from ptsemseg.loader.mapillary_vistas_loader import mapillaryVistasLoader
 from ptsemseg.loader.bdd100kLoader import bdd100kLoader
 from ptsemseg.loader.bdd100kLoader_Lane import bdd100kLoaderLane
+from ptsemseg.loader.culaneLoader import culaneLoader
 
 def get_loader(name):
     """get_loader
@@ -26,5 +27,6 @@ def get_loader(name):
         "sunrgbd": SUNRGBDLoader,
         "vistas": mapillaryVistasLoader,
         'bdd100k':bdd100kLoader,
-        'bdd100k_lane':bdd100kLoaderLane
+        'bdd100k_lane':bdd100kLoaderLane,
+        'culane':culaneLoader
     }[name]
