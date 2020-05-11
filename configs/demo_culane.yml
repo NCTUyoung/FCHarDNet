@@ -1,0 +1,46 @@
+model:
+    arch: culane
+data:
+    dataset: bdd100k
+    train_split: train
+    val_split: val
+    img_rows: 576
+    img_cols: 1024
+    path: /home/jimmyyoung/data/bdd100k/
+    sbd_path: /mnt/ssd2/Cityscapes/
+testing:
+    resume: 'weights/culane/culane_culane_best_model.pkl'
+    type: image
+    n_classes: 5
+    publish_rate: 15
+    erode_kernel: 3
+    sample_delta: 15
+    sample_delta_start: 15
+camera:
+    center_point: 600
+    left_threshold: 0.7
+    right_threshold: 0.7
+vis:
+    background: 
+        id: 0
+        color: [255,0,0]
+    main_lane: 
+        id: 1
+        color:  [0,255,0]
+    alter_lane: 
+        id: 2
+        color:  [0,0,255]
+    double_line: 
+        id: 3
+        color:  [255,0,255]
+    dashed_line: 
+        id: 4
+        color:  [255,0,255]
+    
+
+
+
+
+
+
+    

@@ -1,5 +1,6 @@
 model:
     arch: hardnet
+image_src: /image_raw
 data:
     dataset: bdd100k
     train_split: train
@@ -9,10 +10,10 @@ data:
     path: /home/jimmyyoung/data/bdd100k/
     sbd_path: /mnt/ssd2/Cityscapes/
 testing:
-    resume: 'weights/0410/hardnet_bdd100k_lane_best_model.pkl'
+    resume: 'weights/0507/hardnet_bdd100k_lane_best_model.pkl'
     type: image
     n_classes: 6
-    publish_rate: 15
+    publish_rate: 4
     erode_kernel: 3
     sample_delta: 15
     sample_delta_start: 15

@@ -3,9 +3,9 @@ import os
 import yaml
 from collections import OrderedDict
 import time
-import shutil
+# import shutil
 import torch
-import random
+# import random
 import argparse
 from cStringIO import StringIO
 
@@ -15,22 +15,24 @@ import torch.nn as nn
 import torchvision
 
 from torch.utils import data
-from torchvision.utils import make_grid
-from tqdm import tqdm
+# from torchvision.utils import make_grid
+# from tqdm import tqdm
 
 from ptsemseg.models import get_model
 from ptsemseg.utils import get_logger
 
 import cv2
 
-import time
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
-import PIL
+
+# import matplotlib as mpl
+# mpl.use('Agg')
+# import matplotlib.pyplot as plt
+# import PIL
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32MultiArray,MultiArrayDimension
+from rospy.numpy_msg import numpy_msg
+from drive_area_detection.msg import CnnOutput
 import rospy
 import rospkg
 
@@ -41,9 +43,9 @@ def softmax(x, axis=None):
     return y / y.sum(axis=axis, keepdims=True)
 
 class Img_Sub():
-    def __init__(self):
+    def __init__(self,cfg):
         self.bridge = CvBridge()
-        self.image_raw_sub= rospy.Subscriber("/image_raw", Image, self.callback)
+        self.image_raw_sub= rospy.Subscriber(cfg['image_src'], Image, self.callback)
         self.lane_mask_sub= rospy.Subscriber("/Lane/mask", Image, self.lane_callback)
         # self.image_raw_sub= rospy.Subscriber("/Drive/main_point", Float32MultiArray, self.mainpoint_callback)
         # self.drive_scatter_pub  = rospy.Publisher("Drive/scatter", Image)
@@ -61,7 +63,7 @@ class Img_Sub():
 
 
 
-def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,line_points_pub):
+def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,drive_pred_cluster):
      # Setup device
 
     print(torch.cuda.device_count())
@@ -115,30 +117,34 @@ def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive
 
             
 
-            # pred = out[0].max(0)[1].cpu().numpy()
-            # main_area = ((pred==1) * 1).astype(np.uint8)
-            
-            
-            # erosion = cv2.erode(main_area,erosion_kernel,iterations = 1)
-
-
-            # lane = img_sub.lane_mask
-
-
-            # main_area = subtract_lane(erosion,lane)
-            
-            # delta,delta_start = cfg["testing"]["sample_delta"],cfg["testing"]["sample_delta_start"]
-            # mid_point , main_area_fine = find_mid(main_area,delta,delta_start)
 
 
             out = torch.nn.functional.softmax(out[0],dim=0)
+
+
+
+
+            ### Clustering Input 
             out_max = out.argmax(0)
+
+            ### Clustering Input 
+            ego_lane_points = torch.nonzero(out_max == 1)
+            other_lanes_points = torch.nonzero(out_max == 2)
+
+            ego_lane_points = ego_lane_points.view(-1).cpu().numpy()
+            other_lanes_points = other_lanes_points.view(-1).cpu().numpy()
+
+            msg_cluster = CnnOutput()
+            msg_cluster.egolane = ego_lane_points
+            msg_cluster.otherlanes = other_lanes_points
+
+
+
             out_max = out_max.detach().cpu().numpy()
             out = out.detach().cpu().numpy()
             
-            
-            
-            
+                 
+
             start_time = time.time()
             
             print("--- %s seconds ---" % (time.time() - start_time))
@@ -147,63 +153,26 @@ def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive
 
 
             out_max_color = np.zeros((cfg['data']['img_rows'],cfg['data']['img_cols'],3),dtype=np.uint8)
-            
-            
-            
             for key in cfg["vis"]:
                 out_max_color[out_max==cfg["vis"][key]["id"]] = np.array(cfg["vis"][key]["color"])
-            # #publish mid points
-            # mid_point_size = mid_point.shape
-            # mid_point = mid_point.flatten().tolist()
-            # msg_midpoint = Float32MultiArray()
-            # msg_midpoint.data = mid_point
-            # line_points_pub.publish(msg_midpoint)
+
 
             #publish rgb pred map
             drive_pred_pub.publish(bridge.cv2_to_imgmsg(out_main,'bgr8'))
 
             drive_pred_lane_pub.publish(bridge.cv2_to_imgmsg(out_lane,'bgr8'))
             #publish main_area_maks
-            # drive_pub.publish(bridge.cv2_to_imgmsg(main_area_fine.astype(np.uint8),'mono8'))
+
 
             drive_pred_max.publish(bridge.cv2_to_imgmsg(out_max_color.astype(np.uint8),'bgr8'))
+
+            drive_pred_cluster.publish(msg_cluster)
+
 
             rate.sleep()
     return
 
-def subtract_lane(mask,lane):
-    lane[lane>1] = 1
-    mask = mask + lane
-    mask[mask>1] = 1
-    mask = ((mask - lane)*255.0).astype(np.uint8)
-    return mask
-def find_mid(main_area_course,delta=20,delta_y=20):
-    main_area_course[main_area_course>1] = 1
-    # Find Connective component
-    start_time = time.time()
-    output  = cv2.connectedComponentsWithStats(main_area_course)
-    
-    area_stat = output[2][:,4]
-    label_index = np.argsort(area_stat)[-2]
-    main_area = (output[1]==label_index).astype(np.uint8)*254
-    lapsobelx = cv2.Sobel(main_area,cv2.CV_64F,1,0,ksize=9)
 
-
-    mid_point = []
-    
-    while True:
-        sample_y = lapsobelx.shape[0]-delta_y
-        sample_line = lapsobelx[sample_y]
-
-        left_point = np.where(sample_line>0)[0]
-        right_point = np.where(sample_line<0)[0]
-        if len(left_point)==0 or len(right_point)==0:
-            break
-        sample_x = (left_point[0]+ right_point[-1]) // 2
-        delta_y +=delta
-        mid_point.append([sample_x,sample_y])
-    mid_point = np.array(mid_point)
-    return mid_point , main_area
     
 
 
@@ -214,34 +183,32 @@ if __name__ == "__main__":
     rospy.init_node('DriveArea', anonymous=True)
     rospack = rospkg.RosPack()
     pkg_root = os.path.join(rospack.get_path('drive_area_detection'),'src','FCHarDNet')
-    parser = argparse.ArgumentParser(description="config")
-    parser.add_argument(
-        "--config",
-        nargs="?",
-        type=str,
-        default=os.path.join(pkg_root,"configs/demo.yml"),
-        help="Configuration file to use",
-    )
-    args = parser.parse_args()
-    with open(args.config) as fp:
+
+    # Load basic config from config yaml file --------
+    with open(os.path.join(pkg_root,"configs/demo.yml")) as fp:
         cfg = yaml.load(fp)
+    # Load ROS param  --------
+    poblished_rate = rospy.get_param("~det_rate")
+    image_src = rospy.get_param('~image_src')
+    cfg['image_src'] = image_src
+    cfg["testing"]["publish_rate"] = poblished_rate
 
-    
+    img_sub = Img_Sub(cfg)
 
-    img_sub = Img_Sub()
-    drive_pub = rospy.Publisher("Drive/mask", Image)
-    drive_raw_pub = rospy.Publisher("Drive/mask_raw", Image)
-    drive_pred_pub = rospy.Publisher("Drive/pred_main", Image)
-    drive_pred_lane_pub = rospy.Publisher("Drive/pred_lane", Image)
-    drive_pred_max = rospy.Publisher("Drive/pred_max", Image)
-    line_points_pub = rospy.Publisher("Drive/main_point", Float32MultiArray)
-    
-    for key in cfg["vis"]:
-        print(key)
+    # Publish node init  --------
+    drive_pub = rospy.Publisher("Drive/mask", Image,queue_size=10)
+    drive_raw_pub = rospy.Publisher("Drive/mask_raw", Image,queue_size=10)
+    drive_pred_pub = rospy.Publisher("Drive/pred_main", Image,queue_size=10)
+    drive_pred_lane_pub = rospy.Publisher("Drive/pred_lane", Image,queue_size=10)
+    drive_pred_max = rospy.Publisher("Drive/pred_max", Image,queue_size=10)
+    drive_pred_cluster = rospy.Publisher('Drive/cluster_input', numpy_msg(CnnOutput), queue_size=10)
+
     while 1:
         if img_sub.image_ok:
+            print("drive_area image_src is not ready")
+            time.sleep(0.5)
             break
-    
-    demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,line_points_pub)
+    print("drive_area is ok!!")
+    demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,drive_pred_cluster)
 
     
