@@ -46,17 +46,11 @@ class Img_Sub():
     def __init__(self,cfg):
         self.bridge = CvBridge()
         self.image_raw_sub= rospy.Subscriber(cfg['image_src'], Image, self.callback)
-        self.lane_mask_sub= rospy.Subscriber("/Lane/mask", Image, self.lane_callback)
-        # self.image_raw_sub= rospy.Subscriber("/Drive/main_point", Float32MultiArray, self.mainpoint_callback)
-        # self.drive_scatter_pub  = rospy.Publisher("Drive/scatter", Image)
         self.image_ok = False
-        self.lane_ok = False
     def callback(self, msg):
         self.image_raw = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         self.image_ok = True
-    def lane_callback(self,msg):
-        self.lane_mask = self.bridge.imgmsg_to_cv2(msg, "mono8")
-        self.lane_ok = True
+
 
 
 
@@ -174,12 +168,13 @@ if __name__ == "__main__":
 
     # Publish node init  --------
     drive_pub = rospy.Publisher("Drive/segmentation", Image,queue_size=10)
-
+    print("Start drive_Seg Node")
     while 1:
         if img_sub.image_ok:
             print("drive_seg image_src is not ready")
-            time.sleep(0.5)
             break
+        time.sleep(0.5)
+        print("drive_seg image_src is not ready")
     print("drive_seg is ok!!")
     demo(cfg,pkg_root,img_sub,drive_pub)
 

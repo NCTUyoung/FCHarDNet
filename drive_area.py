@@ -203,11 +203,12 @@ if __name__ == "__main__":
     drive_pred_max = rospy.Publisher("Drive/pred_max", Image,queue_size=10)
     drive_pred_cluster = rospy.Publisher('Drive/cluster_input', numpy_msg(CnnOutput), queue_size=10)
 
-    while 1:
+    while not rospy.is_shutdown():
         if img_sub.image_ok:
-            print("drive_area image_src is not ready")
-            time.sleep(0.5)
             break
+        print("drive_area image_src is not ready")
+        time.sleep(0.5)
+        
     print("drive_area is ok!!")
     demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,drive_pred_cluster)
 

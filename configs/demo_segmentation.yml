@@ -1,6 +1,6 @@
 model:
     arch: hardnet
-image_src: /image_raw
+image_src: /usb_camerac/image_raw
 data:
     dataset: bdd100k
     train_split: train
