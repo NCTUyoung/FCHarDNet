@@ -1,7 +1,8 @@
 import copy
 import torchvision.models as models
 
-from ptsemseg.models.hardnet import hardnet,hardnet_culane
+from ptsemseg.models.hardnet import hardnet
+from ptsemseg.models.hardnet_a import hardnet_a
 
 def get_model(model_dict, n_classes, version=None):
     name = model_dict["arch"]
@@ -18,7 +19,7 @@ def _get_model_instance(name):
     try:
         return {
             "hardnet": hardnet,
-            "culane":hardnet_culane
+            "hardnet_a":hardnet_a,
         }[name]
     except:
         raise ("Model {} not available".format(name))

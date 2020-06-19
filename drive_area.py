@@ -63,7 +63,7 @@ class Img_Sub():
 
 
 
-def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,drive_pred_cluster):
+def demo(cfg,pkg_root,img_sub,drive_pred_max):
      # Setup device
 
     print(torch.cuda.device_count())
@@ -124,19 +124,9 @@ def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive
 
 
 
-            ### Clustering Input 
             out_max = out.argmax(0)
 
-            ### Clustering Input 
-            ego_lane_points = torch.nonzero(out_max == 1)
-            other_lanes_points = torch.nonzero(out_max == 2)
 
-            ego_lane_points = ego_lane_points.view(-1).cpu().numpy()
-            other_lanes_points = other_lanes_points.view(-1).cpu().numpy()
-
-            msg_cluster = CnnOutput()
-            msg_cluster.egolane = ego_lane_points
-            msg_cluster.otherlanes = other_lanes_points
 
 
 
@@ -145,11 +135,6 @@ def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive
             
                  
 
-            start_time = time.time()
-            
-            print("--- %s seconds ---" % (time.time() - start_time))
-            out_main = np.clip(np.transpose(out[:3,:,:]*255.0, (1,2,0)),0,255).astype(np.uint8)
-            out_lane = np.clip(np.transpose(out[3:,:,:]*255.0, (1,2,0)),0,255).astype(np.uint8)
 
 
             out_max_color = np.zeros((cfg['data']['img_rows'],cfg['data']['img_cols'],3),dtype=np.uint8)
@@ -157,16 +142,10 @@ def demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive
                 out_max_color[out_max==cfg["vis"][key]["id"]] = np.array(cfg["vis"][key]["color"])
 
 
-            #publish rgb pred map
-            drive_pred_pub.publish(bridge.cv2_to_imgmsg(out_main,'bgr8'))
-
-            drive_pred_lane_pub.publish(bridge.cv2_to_imgmsg(out_lane,'bgr8'))
-            #publish main_area_maks
-
 
             drive_pred_max.publish(bridge.cv2_to_imgmsg(out_max_color.astype(np.uint8),'bgr8'))
 
-            drive_pred_cluster.publish(msg_cluster)
+
 
 
             rate.sleep()
@@ -196,12 +175,9 @@ if __name__ == "__main__":
     img_sub = Img_Sub(cfg)
 
     # Publish node init  --------
-    drive_pub = rospy.Publisher("Drive/mask", Image,queue_size=10)
-    drive_raw_pub = rospy.Publisher("Drive/mask_raw", Image,queue_size=10)
-    drive_pred_pub = rospy.Publisher("Drive/pred_main", Image,queue_size=10)
-    drive_pred_lane_pub = rospy.Publisher("Drive/pred_lane", Image,queue_size=10)
-    drive_pred_max = rospy.Publisher("Drive/pred_max", Image,queue_size=10)
-    drive_pred_cluster = rospy.Publisher('Drive/cluster_input', numpy_msg(CnnOutput), queue_size=10)
+
+    drive_pred_max = rospy.Publisher("Drive/pred_max", Image,queue_size=1)
+
 
     while not rospy.is_shutdown():
         if img_sub.image_ok:
@@ -210,6 +186,6 @@ if __name__ == "__main__":
         time.sleep(0.5)
         
     print("drive_area is ok!!")
-    demo(cfg,pkg_root,img_sub,drive_pub,drive_pred_pub,drive_pred_lane_pub,drive_pred_max,drive_pred_cluster)
+    demo(cfg,pkg_root,img_sub,drive_pred_max)
 
     
