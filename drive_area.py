@@ -3,36 +3,29 @@ import os
 import yaml
 from collections import OrderedDict
 import time
-# import shutil
+
 import torch
-# import random
+
 import argparse
-from cStringIO import StringIO
+
 
 import numpy as np
 
 import torch.nn as nn
 import torchvision
 
-from torch.utils import data
-# from torchvision.utils import make_grid
-# from tqdm import tqdm
 
 from ptsemseg.models import get_model
-from ptsemseg.utils import get_logger
+
 
 import cv2
 
 
-# import matplotlib as mpl
-# mpl.use('Agg')
-# import matplotlib.pyplot as plt
-# import PIL
+
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32MultiArray,MultiArrayDimension
-from rospy.numpy_msg import numpy_msg
-from drive_area_detection.msg import CnnOutput
+
+
 import rospy
 import rospkg
 
@@ -47,12 +40,13 @@ class Img_Sub():
         self.bridge = CvBridge()
         self.image_raw_sub= rospy.Subscriber(cfg['image_src'], Image, self.callback)
         self.lane_mask_sub= rospy.Subscriber("/Lane/mask", Image, self.lane_callback)
-        # self.image_raw_sub= rospy.Subscriber("/Drive/main_point", Float32MultiArray, self.mainpoint_callback)
-        # self.drive_scatter_pub  = rospy.Publisher("Drive/scatter", Image)
+
         self.image_ok = False
         self.lane_ok = False
     def callback(self, msg):
-        self.image_raw = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        image_raw  = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        # self.image_raw = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        self.image_raw = cv2.resize(image_raw,(1024,576))
         self.image_ok = True
     def lane_callback(self,msg):
         self.lane_mask = self.bridge.imgmsg_to_cv2(msg, "mono8")
@@ -66,20 +60,17 @@ class Img_Sub():
 def demo(cfg,pkg_root,img_sub,drive_pred_max):
      # Setup device
 
-    print(torch.cuda.device_count())
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Setup Model
     n_classes = cfg["testing"]["n_classes"]
     img_size = (cfg["data"]["img_rows"], cfg["data"]["img_cols"])
 
     model = get_model(cfg["model"], n_classes)
-    # model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
-    # pretrained_path=os.path.join(pkg_root,'weights/hardnet_petite_base.pth')
-    # weights = torch.load(pretrained_path)
-    # model.module.base.load_state_dict(weights)
+
     total_params = sum(p.numel() for p in model.parameters())
     print( 'Parameters:',total_params )
-    print(pkg_root)
+
     if cfg["testing"]["resume"] is not None:
         resume_dir = os.path.join(pkg_root,cfg["testing"]["resume"])
         if os.path.isfile(resume_dir):
@@ -106,6 +97,7 @@ def demo(cfg,pkg_root,img_sub,drive_pred_max):
     rate = rospy.Rate(cfg["testing"]["publish_rate"])
     erosion_kernel = np.ones((cfg["testing"]["erode_kernel"],cfg["testing"]["erode_kernel"]),np.uint8)
     with torch.no_grad():
+
         while not rospy.is_shutdown():
             
             image = img_sub.image_raw
@@ -114,24 +106,9 @@ def demo(cfg,pkg_root,img_sub,drive_pred_max):
             image = ToTensor(image).unsqueeze(0).to(device)
             out = model(image) 
             
-
-            
-
-
-
-            out = torch.nn.functional.softmax(out[0],dim=0)
-
-
-
-
-            out_max = out.argmax(0)
-
-
-
-
-
+            out_max = torch.nn.functional.softmax(out[0],dim=0).argmax(0)
             out_max = out_max.detach().cpu().numpy()
-            out = out.detach().cpu().numpy()
+
             
                  
 
@@ -142,11 +119,12 @@ def demo(cfg,pkg_root,img_sub,drive_pred_max):
                 out_max_color[out_max==cfg["vis"][key]["id"]] = np.array(cfg["vis"][key]["color"])
 
 
-
+            # out_max_color = cv2.resize(out_max_color,(1920,1080))
             drive_pred_max.publish(bridge.cv2_to_imgmsg(out_max_color.astype(np.uint8),'bgr8'))
 
 
 
+            
 
             rate.sleep()
     return
@@ -176,7 +154,7 @@ if __name__ == "__main__":
 
     # Publish node init  --------
 
-    drive_pred_max = rospy.Publisher("Drive/pred_max", Image,queue_size=1)
+    drive_pred_max = rospy.Publisher("Drive/pred_max", Image)
 
 
     while not rospy.is_shutdown():

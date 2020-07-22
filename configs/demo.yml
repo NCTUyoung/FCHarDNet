@@ -7,11 +7,14 @@ data:
     val_split: val
     img_rows: 576
     img_cols: 1024
+    # img_rows: 1080
+    # img_cols: 1920
     path: /home/jimmyyoung/data/bdd100k/
     sbd_path: /mnt/ssd2/Cityscapes/
 testing:
-    # resume: 'weights/lovasz/hardnet_bdd100k_lane_checkpoint_80000_model.pkl'
-    resume: 'weights/lovasz/hardnet_bdd100k_lane_best_model.pkl'
+    resume: 'weights/hardnet_cross.pkl'
+    # resume: 'weights/lovasz/hardnet_bdd100k_lane_best_model.pkl'
+    # resume: 'weights/hardnet_bootstrap_best.pkl'
     type: image
     n_classes: 6
     publish_rate: 4
