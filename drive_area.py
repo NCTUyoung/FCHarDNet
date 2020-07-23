@@ -119,7 +119,7 @@ def demo(cfg,pkg_root,img_sub,drive_pred_max):
                 out_max_color[out_max==cfg["vis"][key]["id"]] = np.array(cfg["vis"][key]["color"])
 
 
-            # out_max_color = cv2.resize(out_max_color,(1920,1080))
+            out_max_color = cv2.resize(out_max_color,(1920,1080))
             drive_pred_max.publish(bridge.cv2_to_imgmsg(out_max_color.astype(np.uint8),'bgr8'))
 
 
