@@ -12,8 +12,8 @@ data:
     path: /home/jimmyyoung/data/bdd100k/
     sbd_path: /mnt/ssd2/Cityscapes/
 testing:
-    resume: 'weights/hardnet_cross.pkl'
-    # resume: 'weights/lovasz/hardnet_bdd100k_lane_best_model.pkl'
+    # resume: 'weights/hardnet_cross.pkl'
+    resume: 'weights/lovasz/hardnet_bdd100k_lane_best_model.pkl'
     # resume: 'weights/hardnet_bootstrap_best.pkl'
     type: image
     n_classes: 6
